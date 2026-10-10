@@ -86,7 +86,12 @@ export const normalizeResult = (raw: unknown): ProductionKit | null => {
   const rawNotes = ensureArray(record.production_notes);
   const production_notes = rawNotes.map(n => ensureString(n)).filter(Boolean);
 
+  const planId = (record.id && typeof record.id === 'string' && record.id.trim())
+    ? record.id.trim()
+    : `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+
   return {
+    id: planId,
     title,
     creative_direction,
     hooks,

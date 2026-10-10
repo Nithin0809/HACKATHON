@@ -68,7 +68,11 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
             type="button"
             className="primary-step-btn"
             disabled={generatingAll}
-            onClick={onGenerateAll}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onGenerateAll();
+            }}
             style={{ minHeight: '44px', fontSize: '15px' }}
           >
             {generatingAll ? (
@@ -82,7 +86,11 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
             <button
               type="button"
               className="secondary-step-btn"
-              onClick={() => downloadAllImagesZip(shots, projectTitle)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                downloadAllImagesZip(shots, projectTitle);
+              }}
               style={{ minHeight: '44px', fontSize: '15px' }}
             >
               <Download size={18} /> Download All Pictures
@@ -115,7 +123,11 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
                     <button
                       type="button"
                       className="tiny-frame-btn"
-                      onClick={() => onRegenerateSingle(index)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRegenerateSingle(index);
+                      }}
                       title="Try another picture for this scene"
                     >
                       <RefreshCw size={14} /> Try Another Picture
@@ -123,7 +135,11 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
                     <button
                       type="button"
                       className="tiny-frame-btn"
-                      onClick={() => downloadSingleImage(s.imageUrl!, `scene-${index + 1}-${s.title || 'picture'}.png`)}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        downloadSingleImage(s.imageUrl!, `scene-${index + 1}-${s.title || 'picture'}.png`);
+                      }}
                       title="Download this picture"
                     >
                       <Download size={14} /> Download Picture
@@ -137,8 +153,12 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
                   <button
                     type="button"
                     className="generate-single-btn"
-                    onClick={() => onRegenerateSingle(index)}
-                    disabled={s.imageLoading}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onRegenerateSingle(index);
+                    }}
+                    disabled={s.imageLoading || generatingAll}
                     style={{ marginTop: '8px' }}
                   >
                     <Sparkles size={16} /> Create Picture
@@ -152,7 +172,11 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
                   <button
                     type="button"
                     className="retry-btn"
-                    onClick={() => onRegenerateSingle(index)}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onRegenerateSingle(index);
+                    }}
                   >
                     <RefreshCw size={12} /> Try Again
                   </button>

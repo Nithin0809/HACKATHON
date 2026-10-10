@@ -126,7 +126,22 @@ export default function Home() {
           imageLoading: false,
           imageError: undefined
         };
-        return { ...prev, shots: updatedShots };
+        const updatedResult = { ...prev, shots: updatedShots };
+
+        if (prev.id) {
+          setHistory(prevHistory => {
+            const updatedHistory = prevHistory.map(item => {
+              if (item.id === prev.id || item.result?.id === prev.id) {
+                return { ...item, result: updatedResult };
+              }
+              return item;
+            });
+            saveHistoryToStorage(updatedHistory);
+            return updatedHistory;
+          });
+        }
+
+        return updatedResult;
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error rendering image.';

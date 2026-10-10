@@ -44,6 +44,7 @@ export interface ProductionMetadata {
 }
 
 export interface ProductionKit {
+  id?: string;
   title: string;
   creative_direction: string;
   hooks: HookOption[];

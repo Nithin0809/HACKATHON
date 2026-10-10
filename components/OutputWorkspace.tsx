@@ -55,11 +55,17 @@ export const OutputWorkspace: React.FC<OutputWorkspaceProps> = ({
 }) => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [maxStepReached, setMaxStepReached] = useState<number>(1);
+  const prevPlanIdRef = React.useRef<string | undefined>(undefined);
 
   useEffect(() => {
-    if (result) {
-      setCurrentStep(1);
-      setMaxStepReached(6);
+    if (result && result.id) {
+      if (prevPlanIdRef.current !== result.id) {
+        prevPlanIdRef.current = result.id;
+        setCurrentStep(1);
+        setMaxStepReached(6);
+      }
+    } else if (!result) {
+      prevPlanIdRef.current = undefined;
     }
   }, [result]);
 

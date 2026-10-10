@@ -27,9 +27,10 @@ export const saveHistoryToStorage = (items: HistoryItem[]): void => {
 };
 
 export const createHistoryItem = (formData: ReelBriefForm, resultData: ProductionKit): HistoryItem => {
+  const itemId = resultData.id || ('rf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7));
   const now = new Date();
   return {
-    id: 'rf_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    id: itemId,
     createdAt: now.toISOString(),
     formattedDate: now.toLocaleDateString('en-US', {
       month: 'short',
@@ -39,6 +40,6 @@ export const createHistoryItem = (formData: ReelBriefForm, resultData: Productio
       minute: '2-digit'
     }),
     form: { ...formData },
-    result: { ...resultData }
+    result: { ...resultData, id: itemId }
   };
 };
