@@ -94,9 +94,9 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
             {/* Visual Frame Image Box */}
             <div className="frame-container" style={{ aspectRatio: aspectStyle }}>
               {s.imageLoading ? (
-                <div className="frame-loading">
+                <div className="frame-loading frame-skeleton shimmer">
                   <LoaderCircle className="spin" size={32}/>
-                  <span>Rendering Shot {index + 1}…</span>
+                  <span>Rendering Frame {index + 1}…</span>
                 </div>
               ) : s.imageUrl ? (
                 <>
@@ -105,6 +105,7 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
                     src={s.imageUrl}
                     alt={s.title || `Shot ${index + 1}`}
                     className="frame-img"
+                    loading="lazy"
                   />
                   <div className="frame-overlay-actions">
                     <button
@@ -113,7 +114,7 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
                       onClick={() => onRegenerateSingle(index)}
                       title="Regenerate this frame"
                     >
-                      <RefreshCw size={14}/> Regenerate
+                      <RefreshCw size={13}/> Regenerate
                     </button>
                     <button
                       type="button"
@@ -121,7 +122,7 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
                       onClick={() => downloadSingleImage(s.imageUrl!, `shot-${index + 1}-${s.title || 'frame'}.png`)}
                       title="Download image"
                     >
-                      <Download size={14}/> Download
+                      <Download size={13}/> Download
                     </button>
                   </div>
                 </>
@@ -142,7 +143,14 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
 
               {s.imageError && (
                 <div className="frame-error-badge">
-                  <AlertCircle size={14}/> {s.imageError}
+                  <span><AlertCircle size={13}/> {s.imageError}</span>
+                  <button
+                    type="button"
+                    className="retry-btn"
+                    onClick={() => onRegenerateSingle(index)}
+                  >
+                    <RefreshCw size={12}/> Retry
+                  </button>
                 </div>
               )}
             </div>

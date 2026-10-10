@@ -1966,8 +1966,23 @@ select:focus {
 
 .storyboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@media (max-width: 1100px) {
+  .storyboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .storyboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .storyboard-card {
@@ -1979,6 +1994,9 @@ select:focus {
   flex-direction: column;
   box-shadow: var(--panel-shadow);
   transition: border-color 0.2s ease, transform 0.2s ease;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .storyboard-card:hover {
@@ -1989,17 +2007,23 @@ select:focus {
 .frame-container {
   position: relative;
   width: 100%;
+  max-width: 100%;
   background: #06060a;
   overflow: hidden;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--border);
+  box-sizing: border-box;
 }
 
 .frame-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
+  max-width: 100%;
 }
 
 .frame-overlay-actions {
@@ -2008,8 +2032,12 @@ select:focus {
   right: 10px;
   display: flex;
   gap: 6px;
+  flex-wrap: wrap;
+  max-width: calc(100% - 20px);
+  justify-content: flex-end;
   opacity: 0.9;
   transition: opacity 0.2s ease;
+  z-index: 4;
 }
 
 .storyboard-card:hover .frame-overlay-actions {
@@ -2030,6 +2058,7 @@ select:focus {
   font-size: 11px;
   font-weight: 600;
   transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
 .tiny-frame-btn:hover {
@@ -2042,19 +2071,39 @@ select:focus {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   color: var(--violet);
   font-size: 12px;
   font-weight: 600;
+  width: 100%;
+  height: 100%;
+}
+
+.frame-skeleton {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, #090910 25%, #181824 50%, #090910 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite linear;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 .frame-placeholder {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 8px;
   color: var(--text-subtle);
   font-size: 12px;
+  width: 100%;
+  height: 100%;
+  padding: 16px;
 }
 
 .placeholder-icon {
@@ -2075,6 +2124,7 @@ select:focus {
   font-size: 11.5px;
   font-weight: 600;
   transition: all 0.18s ease;
+  cursor: pointer;
 }
 
 .generate-single-btn:hover {
@@ -2086,14 +2136,48 @@ select:focus {
   bottom: 8px;
   left: 8px;
   right: 8px;
-  background: rgba(239, 68, 68, 0.9);
-  color: #fff;
+  background: rgba(239, 68, 68, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
   font-size: 11px;
   padding: 6px 10px;
   border-radius: 6px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 6px;
+  z-index: 5;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.frame-error-badge span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.frame-error-badge .retry-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  color: #dc2626;
+  border: none;
+  padding: 3px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  white-space: nowrap;
+}
+
+.frame-error-badge .retry-btn:hover {
+  opacity: 0.9;
 }
 
 .storyboard-details {
@@ -2101,12 +2185,17 @@ select:focus {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .storyboard-top-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .frame-badge {
@@ -2116,6 +2205,7 @@ select:focus {
   background: rgba(167, 139, 250, 0.1);
   padding: 3px 8px;
   border-radius: 4px;
+  white-space: nowrap;
 }
 
 .frame-time {
@@ -2125,12 +2215,15 @@ select:focus {
   background: rgba(255, 155, 104, 0.12);
   padding: 2px 7px;
   border-radius: 4px;
+  white-space: nowrap;
 }
 
 .storyboard-title {
   font: 700 15px 'Space Grotesk', sans-serif;
   color: var(--text-main);
   margin: 2px 0 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .storyboard-voiceover {
@@ -2141,6 +2234,8 @@ select:focus {
   font-style: italic;
   font-size: 12px;
   border-radius: 0 6px 6px 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .storyboard-meta-item {
@@ -2163,6 +2258,8 @@ select:focus {
   font-size: 12px;
   color: var(--text-secondary);
   line-height: 1.4;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .storyboard-bottom-row {
@@ -2171,6 +2268,8 @@ select:focus {
   gap: 8px;
   padding-top: 10px;
   border-top: 1px solid var(--border);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .storyboard-bottom-row small {
