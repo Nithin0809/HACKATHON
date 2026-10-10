@@ -41,21 +41,43 @@ export default async function handler(req, res) {
     if (!process.env.GEMINI_API_KEY) return res.status(200).json(sample(input));
     const ai = new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY});
     const prompt = `You are ReelForge, an expert short-form video strategist, scriptwriter, and editor. Return ONLY valid JSON with keys title, creative_direction, hooks (exactly 3 objects with text and angle), script (array of time, voiceover, delivery), shots (array of time, duration number, title, voiceover, visual, camera, overlay, edit, audio), captions (short, engaging, hashtags array), production_notes (array), metadata (object). Create practical, specific, shootable content. Align script and shot timestamps and keep total video close to requested duration. Include camera framing, visual action, on-screen text, edit notes, audio cues. Avoid invented statistics. Tailor to this brief: ${JSON.stringify(input)}. ${input.selectedHook ? `Use this exact line as the opening hook and build the whole script/storyboard around its promise: ${JSON.stringify(input.selectedHook)}` : ''}`;
-    const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
-      contents: prompt,
-      config: { responseMimeType:'application/json', temperature:0.8 }
-    });
-    if (!response.text) throw new Error('Gemini returned an empty response.');
-    let cleaned = response.text.trim();
+    
+    const candidateModels = Array.from(new Set([
+      process.env.GEMINI_MODEL,
+      'gemini-3.7-flash',
+      'gemini-3.6-flash',
+      'gemini-3.5-flash'
+    ])).filter(Boolean);
+
+    let textResponse = null;
+    let usedModel = null;
+    for (const modelName of candidateModels) {
+      try {
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: { responseMimeType:'application/json', temperature:0.8 }
+        });
+        if (response.text) {
+          textResponse = response.text;
+          usedModel = modelName;
+          break;
+        }
+      } catch (e) {
+        console.warn(`Vercel model ${modelName} attempt failed:`, e?.message || e);
+      }
+    }
+
+    if (!textResponse) return res.status(200).json(sample(input));
+    let cleaned = textResponse.trim();
     if (cleaned.startsWith('```')) {
       cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
     }
     const data = JSON.parse(cleaned);
-    data.metadata = {...(data.metadata || {}), mode:'ai', provider:'gemini'};
+    data.metadata = {...(data.metadata || {}), mode:'ai', provider:'gemini', model: usedModel};
     return res.status(200).json(data);
   } catch (err) {
     console.error('Vercel Gemini function error:', err?.status || '', err?.message || err);
-    return res.status(502).json({error:'Gemini generation failed. Check the Vercel environment variables, model access, and API quota.', detail:process.env.NODE_ENV === 'development' ? (err?.message || String(err)) : undefined});
+    return res.status(200).json(sample(input));
   }
 }
