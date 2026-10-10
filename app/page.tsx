@@ -29,12 +29,12 @@ const getInitialTheme = (): string => {
 };
 
 const initialForm: ReelBriefForm = {
-  topic: 'Why beginner video editors struggle to get clients',
+  topic: '5 editing mistakes beginners make',
   platform: 'Instagram Reels',
   duration: '30',
-  niche: 'Video editing & filmmaking',
+  niche: 'Education',
   audience: 'Beginner creators',
-  tone: 'Bold & conversational',
+  tone: 'Educational & clear',
   language: 'English',
   goal: 'Educate'
 };

@@ -19,7 +19,7 @@ interface SidebarProps {
   historyCount: number;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
-  setActiveTab: (tab: 'storyboard' | 'script' | 'captions') => void;
+  setActiveTab: (tab: 'visual-storyboard' | 'storyboard' | 'script' | 'captions') => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="brand-mark"><Clapperboard size={22}/></div>
         <div>
           <div className="brand-name">reelforge<span>ai</span></div>
-          <div className="brand-sub">VIDEO WORKFLOW STUDIO</div>
+          <div className="brand-sub">EASY VIDEO PLANNER</div>
         </div>
         <button
           className="mobile-close icon-btn"
@@ -47,13 +47,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
 
-      <div className="workspace-label">WORKSPACE</div>
+      <div className="workspace-label">MY WORKSPACE</div>
       <button
         type="button"
         className={`nav-item ${currentView === 'studio' ? 'selected' : ''}`}
         onClick={() => { setCurrentView('studio'); setMobileOpen(false); }}
       >
-        <LayoutDashboard size={17}/> Studio <span className="nav-pill">NEXT.JS</span>
+        <LayoutDashboard size={17}/> Video Planner
       </button>
 
       <button
@@ -61,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className={`nav-item ${currentView === 'history' ? 'selected' : ''}`}
         onClick={() => { setCurrentView('history'); setMobileOpen(false); }}
       >
-        <History size={17}/> History
+        <History size={17}/> My Saved Plans
         {historyCount > 0 && <span className="nav-count">{historyCount}</span>}
       </button>
 
@@ -70,15 +70,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className="nav-item"
         onClick={() => { setCurrentView('studio'); setActiveTab('script'); setMobileOpen(false); }}
       >
-        <Captions size={17}/> Script & hooks
+        <Captions size={17}/> Words to Say
       </button>
 
       <button
         type="button"
         className="nav-item"
-        onClick={() => { setCurrentView('studio'); setActiveTab('storyboard'); setMobileOpen(false); }}
+        onClick={() => { setCurrentView('studio'); setActiveTab('visual-storyboard'); setMobileOpen(false); }}
       >
-        <Film size={17}/> Shot storyboard
+        <Film size={17}/> See My Scenes
       </button>
 
       <button
@@ -86,23 +86,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
         className="nav-item"
         onClick={() => { setCurrentView('studio'); setActiveTab('captions'); setMobileOpen(false); }}
       >
-        <Instagram size={17}/> Captions & tags
+        <Instagram size={17}/> My Captions
       </button>
 
       <div className="sidebar-bottom">
         <div className="upgrade-card">
           <div className="upgrade-icon"><WandSparkles size={18}/></div>
-          <div className="upgrade-title">From idea to impact.</div>
-          <p>One brief. A complete video production kit.</p>
+          <div className="upgrade-title">Turn ideas into videos</div>
+          <p>Simple step-by-step video plans for creators of all ages.</p>
           <div className="mini-progress"><span/></div>
-          <div className="upgrade-foot"><span>YOUR CREATIVE COPILOT</span><Sparkles size={14}/></div>
+          <div className="upgrade-foot"><span>READY FOR EVERYONE</span><Sparkles size={14}/></div>
         </div>
 
         <div className="user-row">
           <div className="avatar">RF</div>
           <div className="user-info">
-            <b>Creator workspace</b>
-            <span>Vercel App Router</span>
+            <b>Creator Workspace</b>
+            <span>Active Session</span>
           </div>
           <span className="status-dot"/>
         </div>

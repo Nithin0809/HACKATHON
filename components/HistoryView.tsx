@@ -79,17 +79,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     <section className="history-view">
       <div className="history-header">
         <div>
-          <div className="eyebrow"><span className="eyebrow-line"/> YOUR CREATIVE REPOSITORY</div>
-          <h1>Your creative history</h1>
-          <p>Pick up where your next great reel began. View, restore, export, and manage your generated production kits.</p>
+          <div className="eyebrow"><span className="eyebrow-line"/> SAVED PLANS</div>
+          <h1>My Saved Video Plans</h1>
+          <p>Every video plan you generate is automatically saved here. View, open, or download them anytime!</p>
         </div>
         <div className="history-header-actions">
           <span className="history-count-badge">
-            <b>{history.length}</b> {history.length === 1 ? 'kit saved' : 'kits saved'}
+            <b>{history.length}</b> {history.length === 1 ? 'plan saved' : 'plans saved'}
           </span>
           {history.length > 0 && (
             <button className="clear-all-btn" onClick={handleClearAllHistory} title="Clear all saved history">
-              <Trash2 size={15}/> Clear all
+              <Trash2 size={15}/> Clear All
             </button>
           )}
         </div>
@@ -102,7 +102,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             <input
               type="text"
               className="history-search-input"
-              placeholder="Search by title, topic, or niche…"
+              placeholder="Search your saved plans…"
               value={historySearch}
               onChange={e => setHistorySearch(e.target.value)}
             />
@@ -150,19 +150,19 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             <div className="empty-spark spark-a"><Sparkles size={16}/></div>
             <div className="empty-spark spark-b"><Clock3 size={16}/></div>
           </div>
-          <h3>No saved production kits yet</h3>
-          <p>Every time you generate a video in the Studio, your complete kit (hooks, script, storyboard, and captions) will automatically be saved here.</p>
-          <button className="generate-btn" onClick={() => setCurrentView('studio')}>
-            <Sparkles size={17}/> Go to Studio <ChevronRight size={16}/>
+          <h3>No saved video plans yet</h3>
+          <p>Once you click &quot;Create My Video Plan&quot;, your complete plan will appear here!</p>
+          <button className="main-submit-btn" onClick={() => setCurrentView('studio')} style={{ maxWidth: '280px', margin: '20px auto 0' }}>
+            <Sparkles size={18}/> Create a Video Plan
           </button>
         </div>
       ) : filteredHistory.length === 0 ? (
         <div className="panel history-no-match-panel">
           <Search size={34} className="no-match-icon"/>
-          <h3>No projects match your filter</h3>
-          <p>Try adjusting your search query or platform filter to see your saved kits.</p>
-          <button className="export-btn" onClick={() => { setHistorySearch(''); setHistoryPlatform('All'); }}>
-            Reset filters
+          <h3>No video plans match your search</h3>
+          <p>Try searching for a different keyword or resetting your filters.</p>
+          <button className="secondary-step-btn" onClick={() => { setHistorySearch(''); setHistoryPlatform('All'); }}>
+            Reset Filters
           </button>
         </div>
       ) : (
@@ -185,7 +185,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 <button
                   className="delete-item-btn"
                   onClick={() => handleDeleteItem(item.id)}
-                  title="Delete this project from history"
+                  title="Delete this plan"
                 >
                   <Trash2 size={15}/>
                 </button>
@@ -193,40 +193,38 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
               <div className="history-card-body">
                 <h4>{item.result?.title || item.form?.topic}</h4>
-                <p className="history-card-prompt"><b>Idea:</b> {item.form?.topic}</p>
+                <p className="history-card-prompt"><b>Topic:</b> {item.form?.topic}</p>
                 {item.result?.creative_direction && (
                   <p className="history-card-desc">{item.result.creative_direction}</p>
                 )}
               </div>
 
               <div className="history-card-stats">
-                <span><b>{(item.result?.hooks || []).length}</b> hooks</span>
+                <span><b>{(item.result?.hooks || []).length}</b> opening lines</span>
                 <span>•</span>
-                <span><b>{(item.result?.shots || []).length}</b> shots</span>
-                <span>•</span>
-                <span><b>{item.form?.tone || 'Conversational'}</b></span>
+                <span><b>{(item.result?.shots || []).length}</b> scenes</span>
               </div>
 
               <div className="history-card-footer">
                 <button
                   className="history-open-btn"
                   onClick={() => handleOpenProject(item)}
-                  title="Restore and edit in Studio"
+                  title="Open video plan"
                 >
-                  <FolderOpen size={15}/> Open in Studio
+                  <FolderOpen size={15}/> Open Plan
                 </button>
                 <div className="history-card-subactions">
                   <button
                     className="icon-action-btn"
                     onClick={() => handleCopyItem(item)}
-                    title="Copy complete kit as text"
+                    title="Copy video plan as text"
                   >
                     {copied === 'history_' + item.id ? <Check size={15}/> : <Copy size={15}/>}
                   </button>
                   <button
                     className="icon-action-btn"
                     onClick={() => handleDownloadItem(item)}
-                    title="Export kit as JSON"
+                    title="Download plan"
                   >
                     <Download size={15}/>
                   </button>

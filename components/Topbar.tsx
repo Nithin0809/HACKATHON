@@ -29,9 +29,9 @@ export const Topbar: React.FC<TopbarProps> = ({
         >
           <Menu size={20}/>
         </button>
-        <span className="breadcrumb-muted">Workspace</span>
+        <span className="breadcrumb-muted">ReelForge</span>
         <ChevronRight size={14}/>
-        <b>{currentView === 'studio' ? 'Creative studio' : 'Generation history'}</b>
+        <b>{currentView === 'studio' ? 'Video Planner' : 'My Saved Plans'}</b>
       </div>
 
       <div className="top-right">
@@ -56,13 +56,13 @@ export const Topbar: React.FC<TopbarProps> = ({
         </button>
 
         <span className={`mode-indicator ${mode}`}>
-          <span/> {mode === 'ai' ? 'AI engine connected' : 'Demo engine'}
+          <span/> {mode === 'ai' ? 'AI Ready' : 'Demo Mode'}
         </span>
 
         <button
           type="button"
           className="help-btn"
-          title="Enter a topic and generate a production kit"
+          title="Type your idea and click Create My Video Plan"
         >
           <CircleHelp size={17}/>
           <span>Help</span>

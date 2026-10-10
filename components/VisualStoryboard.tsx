@@ -9,10 +9,10 @@ import {
   LoaderCircle,
   Camera,
   Smartphone,
-  Check,
   Sparkles,
   AlertCircle,
-  Layers
+  Layers,
+  Image as ImageIcon
 } from 'lucide-react';
 import { downloadSingleImage, downloadAllImagesZip } from '@/lib/imageDownloader';
 
@@ -50,40 +50,44 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
   return (
     <div className="tab-content visual-storyboard-tab">
       {/* Header Controls Bar */}
-      <div className="storyboard-header-bar">
+      <div className="storyboard-header-bar" style={{ marginBottom: '24px' }}>
         <div>
-          <span className="aspect-pill">
-            <Layers size={13}/> {aspectRatioTag}
+          <span className="aspect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: '8px', fontSize: '13px', fontWeight: 600 }}>
+            <Layers size={14} /> Video Shape: {aspectRatioTag}
           </span>
-          <h4>Visual Storyboard ({shots.length} Scenes)</h4>
-          <p className="storyboard-subtitle">
-            AI-rendered visual frames matching your script timing, camera framing, and color grade.
+          <h4 style={{ fontSize: '20px', margin: '8px 0 4px', color: 'var(--text-main)' }}>
+            See My Scenes ({shots.length} Pictures)
+          </h4>
+          <p className="storyboard-subtitle" style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>
+            Every picture accurately depicts the specific action described for that scene.
           </p>
         </div>
 
-        <div className="storyboard-header-actions">
+        <div className="storyboard-header-actions" style={{ display: 'flex', gap: '10px' }}>
           <button
             type="button"
-            className="generate-btn storyboard-gen-btn"
+            className="primary-step-btn"
             disabled={generatingAll}
             onClick={onGenerateAll}
+            style={{ minHeight: '44px', fontSize: '15px' }}
           >
             {generatingAll ? (
-              <><LoaderCircle className="spin" size={16}/> Rendering Frames…</>
+              <><LoaderCircle className="spin" size={18} /> Creating All Pictures…</>
             ) : (
-              <><WandSparkles size={16}/> {hasGeneratedImages ? 'Regenerate All Images' : 'Generate Storyboard Images'}</>
+              <><WandSparkles size={18} /> {hasGeneratedImages ? 'Create All Pictures Again' : 'Create All Pictures'}</>
             )}
           </button>
 
-          <button
-            type="button"
-            className="export-btn"
-            disabled={!hasGeneratedImages}
-            onClick={() => downloadAllImagesZip(shots, projectTitle)}
-            title="Download all generated storyboard frames"
-          >
-            <Download size={15}/> Download All Images
-          </button>
+          {hasGeneratedImages && (
+            <button
+              type="button"
+              className="secondary-step-btn"
+              onClick={() => downloadAllImagesZip(shots, projectTitle)}
+              style={{ minHeight: '44px', fontSize: '15px' }}
+            >
+              <Download size={18} /> Download All Pictures
+            </button>
+          )}
         </div>
       </div>
 
@@ -95,15 +99,15 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
             <div className="frame-container" style={{ aspectRatio: aspectStyle }}>
               {s.imageLoading ? (
                 <div className="frame-loading frame-skeleton shimmer">
-                  <LoaderCircle className="spin" size={32}/>
-                  <span>Rendering Frame {index + 1}…</span>
+                  <LoaderCircle className="spin" size={32} />
+                  <span>Creating Picture {index + 1}…</span>
                 </div>
               ) : s.imageUrl ? (
                 <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={s.imageUrl}
-                    alt={s.title || `Shot ${index + 1}`}
+                    alt={s.title || `Scene ${index + 1}`}
                     className="frame-img"
                     loading="lazy"
                   />
@@ -112,44 +116,45 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
                       type="button"
                       className="tiny-frame-btn"
                       onClick={() => onRegenerateSingle(index)}
-                      title="Regenerate this frame"
+                      title="Try another picture for this scene"
                     >
-                      <RefreshCw size={13}/> Regenerate
+                      <RefreshCw size={14} /> Try Another Picture
                     </button>
                     <button
                       type="button"
                       className="tiny-frame-btn"
-                      onClick={() => downloadSingleImage(s.imageUrl!, `shot-${index + 1}-${s.title || 'frame'}.png`)}
-                      title="Download image"
+                      onClick={() => downloadSingleImage(s.imageUrl!, `scene-${index + 1}-${s.title || 'picture'}.png`)}
+                      title="Download this picture"
                     >
-                      <Download size={13}/> Download
+                      <Download size={14} /> Download Picture
                     </button>
                   </div>
                 </>
               ) : (
                 <div className="frame-placeholder">
-                  <Camera size={32} className="placeholder-icon"/>
-                  <span>Frame {index + 1}</span>
+                  <Camera size={36} className="placeholder-icon" />
+                  <span>Scene {index + 1} Picture</span>
                   <button
                     type="button"
                     className="generate-single-btn"
                     onClick={() => onRegenerateSingle(index)}
                     disabled={s.imageLoading}
+                    style={{ marginTop: '8px' }}
                   >
-                    <Sparkles size={14}/> Generate Image
+                    <Sparkles size={16} /> Create Picture
                   </button>
                 </div>
               )}
 
               {s.imageError && (
                 <div className="frame-error-badge">
-                  <span><AlertCircle size={13}/> {s.imageError}</span>
+                  <span><AlertCircle size={13} /> We couldn&apos;t create this picture. Please try again.</span>
                   <button
                     type="button"
                     className="retry-btn"
                     onClick={() => onRegenerateSingle(index)}
                   >
-                    <RefreshCw size={12}/> Retry
+                    <RefreshCw size={12} /> Try Again
                   </button>
                 </div>
               )}
@@ -158,39 +163,37 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
             {/* Scene Info Breakdown */}
             <div className="storyboard-details">
               <div className="storyboard-top-row">
-                <span className="frame-badge">FRAME {String(index + 1).padStart(2, '0')}</span>
+                <span className="frame-badge">SCENE {String(index + 1).padStart(2, '0')}</span>
                 <span className="frame-time">{s.time}</span>
               </div>
 
               <h4 className="storyboard-title">{s.title}</h4>
 
               {s.voiceover && (
-                <div className="storyboard-voiceover">“{s.voiceover}”</div>
+                <div className="storyboard-voiceover">
+                  <small style={{ fontSize: '11px', display: 'block', textTransform: 'uppercase', opacity: 0.75, marginBottom: '2px' }}>WORDS TO SAY:</small>
+                  “{s.voiceover}”
+                </div>
               )}
 
               <div className="storyboard-meta-item">
-                <span className="meta-label"><Camera size={13}/> VISUAL ACTION</span>
+                <span className="meta-label"><ImageIcon size={13} /> WHAT HAPPENS IN THIS SCENE</span>
                 <p>{s.visual}</p>
               </div>
 
               <div className="storyboard-meta-item">
-                <span className="meta-label"><Smartphone size={13}/> CAMERA FRAMING</span>
+                <span className="meta-label"><Smartphone size={13} /> CAMERA ANGLE</span>
                 <p>{s.camera}</p>
               </div>
 
-              <div className="storyboard-bottom-row">
-                {s.overlay && (
+              {s.overlay && (
+                <div className="storyboard-bottom-row" style={{ marginTop: '10px' }}>
                   <div>
-                    <small>ON-SCREEN TEXT</small>
+                    <small>TEXT ON SCREEN</small>
                     <b>{s.overlay}</b>
                   </div>
-                )}
-                <div>
-                  <small>EDIT & AUDIO</small>
-                  <b>{s.edit || 'Cut on beat'}</b>
-                  <span>{s.audio || 'Background track'}</span>
                 </div>
-              </div>
+              )}
             </div>
           </article>
         ))}
