@@ -142,65 +142,133 @@ export async function POST(request: Request) {
       height = 800;
     }
 
+    // ── Build an action-specific image prompt ──────────────────────────
+    // VISUAL ACTION is the PRIMARY source for what the image must depict.
+    // Title, topic, and camera are supporting context only.
+    const visualAction = (shot.visual || '').trim();
+    const cameraFraming = (shot.camera || 'medium shot').trim();
+    const sceneTitle = (shot.title || '').trim();
+    const sceneTopic = (topic || 'creator content').trim();
+    const sceneNiche = (niche || '').trim();
+
+    if (!visualAction) {
+      console.warn(`Scene ${sceneIndex}: No VISUAL ACTION provided, falling back to title.`);
+    }
+
+    // Construct a prompt that leads with the exact physical action
+    function buildActionPrompt(): string {
+      const parts: string[] = [];
+
+      // 1. VISUAL ACTION is the lead — what is physically happening
+      if (visualAction) {
+        parts.push(`Photorealistic scene: ${visualAction}`);
+      } else if (sceneTitle) {
+        parts.push(`Photorealistic scene depicting: ${sceneTitle}`);
+      } else {
+        parts.push(`Photorealistic video production scene`);
+      }
+
+      // 2. Camera framing as a cinematography instruction
+      parts.push(`Shot type: ${cameraFraming}`);
+
+      // 3. Topic/niche for environmental context only
+      if (sceneTopic) {
+        parts.push(`Context: ${sceneTopic}`);
+      }
+      if (sceneNiche) {
+        parts.push(`Setting: ${sceneNiche} environment`);
+      }
+
+      // 4. Technical quality directives
+      parts.push('Professional cinematic lighting, natural color grading, shallow depth of field, high detail, 8K resolution');
+
+      // 5. Negative guidance — prevent generic stock imagery
+      parts.push('Show the specific physical action and body language described, not a generic portrait or stock photo');
+
+      return parts.join('. ') + '.';
+    }
+
+    const actionPrompt = buildActionPrompt();
+    console.log(`[generate-image] Scene ${sceneIndex}/${totalScenes} prompt:`, actionPrompt.slice(0, 200));
+
     const apiKey = process.env.GEMINI_API_KEY;
 
-    // 1. Try Google Gemini Imagen API if permitted
+    // ── Provider 1: Google Gemini Imagen API ──────────────────────────
     if (apiKey) {
       const ai = new GoogleGenAI({ apiKey });
-      const prompt = `Cinematic video storyboard frame ${sceneIndex} of ${totalScenes}. Topic: "${topic || 'Creator video'}". Scene Title: "${shot.title}". Visual Action: "${shot.visual}". Camera framing: "${shot.camera}". Professional studio lighting, shallow depth of field, 8k resolution.`;
 
-      const candidateImageModels = ['imagen-3.0-generate-002', 'gemini-2.5-flash-image', 'gemini-3.1-flash-image'];
-
-      for (const mName of candidateImageModels) {
-        try {
-          const response = await ai.models.generateImages({
-            model: mName,
-            prompt,
-            config: {
-              numberOfImages: 1,
-              outputMimeType: 'image/jpeg',
-              aspectRatio
-            }
-          });
-          const imgBytes = response.generatedImages?.[0]?.image?.imageBytes;
-          if (imgBytes) {
-            return NextResponse.json({
-              ok: true,
-              imageUrl: `data:image/jpeg;base64,${imgBytes}`,
-              aspectRatio,
-              provider: 'gemini-imagen'
-            });
+      // Attempt Imagen image generation if quota/permissions allow
+      try {
+        const response = await ai.models.generateImages({
+          model: 'imagen-3.0-generate-002',
+          prompt: actionPrompt,
+          config: {
+            numberOfImages: 1,
+            outputMimeType: 'image/jpeg',
+            aspectRatio
           }
-        } catch (e: unknown) {
-          const msg = e instanceof Error ? e.message : String(e);
-          console.warn(`Gemini Imagen ${mName} call skipped:`, msg.slice(0, 100));
+        });
+        const imgBytes = response.generatedImages?.[0]?.image?.imageBytes;
+        if (imgBytes) {
+          return NextResponse.json({
+            ok: true,
+            imageUrl: `data:image/jpeg;base64,${imgBytes}`,
+            aspectRatio,
+            provider: 'gemini-imagen'
+          });
         }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        console.warn(`Gemini Imagen call skipped:`, msg.slice(0, 120));
       }
     }
 
-    // 2. Pollinations AI Clean Prompt Fetch
+    // ── Provider 2: Pollinations AI — action-specific prompt ─────────
     try {
-      const cleanVisual = (shot.visual || shot.title || 'cinematic video frame')
-        .replace(/[^a-zA-Z0-9\s]/g, ' ')
-        .trim()
-        .slice(0, 60);
-      const cleanTopic = (topic || 'studio').replace(/[^a-zA-Z0-9\s]/g, ' ').trim();
-      const promptText = `cinematic video shot ${cleanVisual} ${cleanTopic} studio lighting`;
-      const encodedPrompt = encodeURIComponent(promptText);
+      // Build a clean, action-dense Pollinations prompt from VISUAL ACTION
+      const cleanAction = (visualAction || sceneTitle || 'Cinematic scene')
+        .replace(/[^a-zA-Z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-      const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true`;
+      const cleanCamera = cameraFraming
+        .replace(/[^a-zA-Z0-9 ]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
 
-      const res = await fetch(pollinationsUrl, { redirect: 'follow' });
+      // Construct a clean, focused visual action prompt
+      const pollinationsPrompt = `${cleanAction} ${cleanCamera} cinematic photorealistic high detail 8k`.slice(0, 240);
+      const encodedPrompt = encodeURIComponent(pollinationsPrompt);
+      const seed = Math.abs(
+        (visualAction || sceneTitle || 'reelforge').split('').reduce(
+          (a: number, b: string) => (a << 5) - a + b.charCodeAt(0), 0
+        )
+      ) + sceneIndex;
+
+      const pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true&seed=${seed}`;
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const res = await fetch(pollinationsUrl, { 
+        redirect: 'follow',
+        signal: controller.signal
+      });
+      clearTimeout(timeoutId);
+
       if (res.ok && res.status === 200) {
-        const arrayBuf = await res.arrayBuffer();
-        if (arrayBuf.byteLength > 2000) {
-          const base64Img = Buffer.from(arrayBuf).toString('base64');
-          return NextResponse.json({
-            ok: true,
-            imageUrl: `data:image/jpeg;base64,${base64Img}`,
-            aspectRatio,
-            provider: 'pollinations-ai'
-          });
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('image')) {
+          const arrayBuf = await res.arrayBuffer();
+          if (arrayBuf.byteLength > 2000) {
+            const base64Img = Buffer.from(arrayBuf).toString('base64');
+            return NextResponse.json({
+              ok: true,
+              imageUrl: `data:image/jpeg;base64,${base64Img}`,
+              aspectRatio,
+              provider: 'pollinations-ai'
+            });
+          }
         }
       }
     } catch (pollErr: unknown) {
@@ -208,28 +276,7 @@ export async function POST(request: Request) {
       console.warn('Pollinations AI image generation skipped:', msg);
     }
 
-    // 3. Robust Photorealistic Seed Photography Fallback (Picsum high-res photorealistic studio shots)
-    try {
-      const seedKey = `rf-${(topic || 'creator').replace(/[^a-zA-Z0-9]/g, '')}-shot${sceneIndex}`;
-      const picsumUrl = `https://picsum.photos/seed/${seedKey}/${width}/${height}`;
-      const res = await fetch(picsumUrl, { redirect: 'follow' });
-      if (res.ok) {
-        const arrayBuf = await res.arrayBuffer();
-        if (arrayBuf.byteLength > 2000) {
-          const base64Img = Buffer.from(arrayBuf).toString('base64');
-          return NextResponse.json({
-            ok: true,
-            imageUrl: `data:image/jpeg;base64,${base64Img}`,
-            aspectRatio,
-            provider: 'studio-photography'
-          });
-        }
-      }
-    } catch (picsumErr: unknown) {
-      console.warn('Picsum photography fallback skipped:', picsumErr);
-    }
-
-    // 4. Fail-Safe High-Definition Cinematic SVG Renderer (Non-overlapping alignment)
+    // ── Provider 3: Fail-Safe Cinematic SVG Renderer ─────────────────
     const fallbackUrl = renderHighDefCinematicSVG({
       sceneNum: Number(sceneIndex),
       totalScenes: Number(totalScenes),
