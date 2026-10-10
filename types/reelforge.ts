@@ -19,6 +19,10 @@ export interface ScriptShot {
   overlay: string;
   edit: string;
   audio: string;
+  imageUrl?: string;
+  imageLoading?: boolean;
+  imageError?: string;
+  aspectRatio?: '9:16' | '16:9' | '1:1';
 }
 
 export interface CaptionData {

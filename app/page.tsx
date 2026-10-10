@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ReelBriefForm, ProductionKit, HistoryItem } from '@/types/reelforge';
+import { ReelBriefForm, ProductionKit, HistoryItem, ScriptShot } from '@/types/reelforge';
 import { normalizeResult } from '@/lib/normalizer';
 import { loadHistoryFromStorage, saveHistoryToStorage, createHistoryItem } from '@/lib/historyStorage';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -47,10 +47,11 @@ export default function Home() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>('');
   const [mode, setMode] = useState<'ai' | 'demo'>('demo');
-  const [activeTab, setActiveTab] = useState<'storyboard' | 'script' | 'captions'>('storyboard');
+  const [activeTab, setActiveTab] = useState<'visual-storyboard' | 'storyboard' | 'script' | 'captions'>('visual-storyboard');
   const [selectedHook, setSelectedHook] = useState<string>('');
   const [copied, setCopied] = useState<string>('');
   const [mobileOpen, setMobileOpen] = useState<boolean>(false);
+  const [generatingAllImages, setGeneratingAllImages] = useState<boolean>(false);
 
   // History state
   const [history, setHistory] = useState<HistoryItem[]>([]);
@@ -85,6 +86,77 @@ export default function Home() {
 
   const toggleTheme = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
 
+  const generateSingleImage = async (shotIndex: number, currentShots: ScriptShot[]) => {
+    const targetShot = currentShots[shotIndex];
+    if (!targetShot) return;
+
+    // Set loading state for target shot
+    setResult(prev => {
+      if (!prev) return prev;
+      const updatedShots = [...prev.shots];
+      updatedShots[shotIndex] = { ...updatedShots[shotIndex], imageLoading: true, imageError: undefined };
+      return { ...prev, shots: updatedShots };
+    });
+
+    try {
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shot: targetShot,
+          topic: form.topic,
+          platform: form.platform,
+          niche: form.niche,
+          sceneIndex: shotIndex + 1,
+          totalScenes: currentShots.length
+        })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.imageUrl) {
+        throw new Error(data.error || 'Failed to generate frame image.');
+      }
+
+      setResult(prev => {
+        if (!prev) return prev;
+        const updatedShots = [...prev.shots];
+        updatedShots[shotIndex] = {
+          ...updatedShots[shotIndex],
+          imageUrl: data.imageUrl,
+          aspectRatio: data.aspectRatio,
+          imageLoading: false,
+          imageError: undefined
+        };
+        return { ...prev, shots: updatedShots };
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error rendering image.';
+      setResult(prev => {
+        if (!prev) return prev;
+        const updatedShots = [...prev.shots];
+        updatedShots[shotIndex] = {
+          ...updatedShots[shotIndex],
+          imageLoading: false,
+          imageError: msg
+        };
+        return { ...prev, shots: updatedShots };
+      });
+    }
+  };
+
+  const handleGenerateAllImages = async () => {
+    if (!result || !result.shots || result.shots.length === 0) return;
+    setGeneratingAllImages(true);
+    for (let i = 0; i < result.shots.length; i++) {
+      await generateSingleImage(i, result.shots);
+    }
+    setGeneratingAllImages(false);
+  };
+
+  const handleRegenerateSingleImage = (index: number) => {
+    if (!result || !result.shots) return;
+    generateSingleImage(index, result.shots);
+  };
+
   const generate = async (e?: React.FormEvent) => {
     e?.preventDefault();
     setLoading(true);
@@ -107,7 +179,7 @@ export default function Home() {
 
       setResult(normalized);
       setSelectedHook('');
-      setActiveTab('storyboard');
+      setActiveTab('visual-storyboard');
 
       const newItem = createHistoryItem(form, normalized);
       setHistory(prev => {
@@ -289,6 +361,9 @@ export default function Home() {
                     copyText={copyText}
                     exportResult={exportResult}
                     generate={generate}
+                    onGenerateAllImages={handleGenerateAllImages}
+                    onRegenerateSingleImage={handleRegenerateSingleImage}
+                    generatingAllImages={generatingAllImages}
                   />
                 </section>
               </>

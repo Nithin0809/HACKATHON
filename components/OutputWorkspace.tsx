@@ -20,18 +20,23 @@ import {
   ChevronRight
 } from 'lucide-react';
 
+import { VisualStoryboard } from '@/components/VisualStoryboard';
+
 interface OutputWorkspaceProps {
   form: ReelBriefForm;
   result: ProductionKit | null;
   loading: boolean;
-  activeTab: 'storyboard' | 'script' | 'captions';
-  setActiveTab: (tab: 'storyboard' | 'script' | 'captions') => void;
+  activeTab: 'visual-storyboard' | 'storyboard' | 'script' | 'captions';
+  setActiveTab: (tab: 'visual-storyboard' | 'storyboard' | 'script' | 'captions') => void;
   selectedHook: string;
   setSelectedHook: (hook: string) => void;
   copied: string;
   copyText: (label: string, value: unknown) => void;
   exportResult: () => void;
   generate: (e?: React.FormEvent) => void;
+  onGenerateAllImages: () => void;
+  onRegenerateSingleImage: (index: number) => void;
+  generatingAllImages: boolean;
 }
 
 export const OutputWorkspace: React.FC<OutputWorkspaceProps> = ({
@@ -45,7 +50,10 @@ export const OutputWorkspace: React.FC<OutputWorkspaceProps> = ({
   copied,
   copyText,
   exportResult,
-  generate
+  generate,
+  onGenerateAllImages,
+  onRegenerateSingleImage,
+  generatingAllImages
 }) => {
   const allText = result ? [
     result.title, '', 'CREATIVE DIRECTION', result.creative_direction, '', 'HOOKS',
@@ -115,16 +123,27 @@ export const OutputWorkspace: React.FC<OutputWorkspaceProps> = ({
           </div>
 
           <div className="tabs">
-            {(['storyboard', 'script', 'captions'] as const).map(id => (
+            {(['visual-storyboard', 'storyboard', 'script', 'captions'] as const).map(id => (
               <button
                 key={id}
                 className={activeTab === id ? 'active' : ''}
                 onClick={() => setActiveTab(id)}
               >
-                {id === 'storyboard' ? 'Storyboard' : id === 'script' ? 'Script & hooks' : 'Captions'}
+                {id === 'visual-storyboard' ? '🎨 Visual Storyboard' : id === 'storyboard' ? 'Shot Details' : id === 'script' ? 'Script & hooks' : 'Captions'}
               </button>
             ))}
           </div>
+
+          {activeTab === 'visual-storyboard' && (
+            <VisualStoryboard
+              shots={result.shots || []}
+              form={form}
+              projectTitle={result.title}
+              onGenerateAll={onGenerateAllImages}
+              onRegenerateSingle={onRegenerateSingleImage}
+              generatingAll={generatingAllImages}
+            />
+          )}
 
           {activeTab === 'storyboard' && (
             <div className="shot-list">
