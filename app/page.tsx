@@ -90,11 +90,18 @@ export default function Home() {
     const targetShot = currentShots[shotIndex];
     if (!targetShot) return;
 
-    // Set loading state for target shot
+    const targetShotId = targetShot.id || `shot_${shotIndex + 1}`;
+    const requestSeed = Math.floor(Math.random() * 1000000) + (Date.now() % 10000);
+
+    // Set loading state for target shot by id
     setResult(prev => {
       if (!prev) return prev;
-      const updatedShots = [...prev.shots];
-      updatedShots[shotIndex] = { ...updatedShots[shotIndex], imageLoading: true, imageError: undefined };
+      const updatedShots = prev.shots.map((s, idx) => {
+        if ((s.id && s.id === targetShotId) || idx === shotIndex) {
+          return { ...s, imageLoading: true, imageError: undefined };
+        }
+        return s;
+      });
       return { ...prev, shots: updatedShots };
     });
 
@@ -104,11 +111,13 @@ export default function Home() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           shot: targetShot,
+          shotId: targetShotId,
           topic: form.topic,
           platform: form.platform,
           niche: form.niche,
           sceneIndex: shotIndex + 1,
-          totalScenes: currentShots.length
+          totalScenes: currentShots.length,
+          seed: requestSeed
         })
       });
       const data = await response.json();
@@ -118,14 +127,19 @@ export default function Home() {
 
       setResult(prev => {
         if (!prev) return prev;
-        const updatedShots = [...prev.shots];
-        updatedShots[shotIndex] = {
-          ...updatedShots[shotIndex],
-          imageUrl: data.imageUrl,
-          aspectRatio: data.aspectRatio,
-          imageLoading: false,
-          imageError: undefined
-        };
+        const updatedShots = prev.shots.map((s, idx) => {
+          if ((s.id && s.id === targetShotId) || idx === shotIndex) {
+            return {
+              ...s,
+              imageUrl: data.imageUrl,
+              aspectRatio: data.aspectRatio,
+              imageLoading: false,
+              imageError: undefined
+            };
+          }
+          return s;
+        });
+
         const updatedResult = { ...prev, shots: updatedShots };
 
         if (prev.id) {
@@ -147,12 +161,16 @@ export default function Home() {
       const msg = err instanceof Error ? err.message : 'Error rendering image.';
       setResult(prev => {
         if (!prev) return prev;
-        const updatedShots = [...prev.shots];
-        updatedShots[shotIndex] = {
-          ...updatedShots[shotIndex],
-          imageLoading: false,
-          imageError: msg
-        };
+        const updatedShots = prev.shots.map((s, idx) => {
+          if ((s.id && s.id === targetShotId) || idx === shotIndex) {
+            return {
+              ...s,
+              imageLoading: false,
+              imageError: msg
+            };
+          }
+          return s;
+        });
         return { ...prev, shots: updatedShots };
       });
     }

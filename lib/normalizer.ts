@@ -54,7 +54,11 @@ export const normalizeResult = (raw: unknown): ProductionKit | null => {
   const rawShots = ensureArray(record.shots);
   const shots: ScriptShot[] = rawShots.map((s, i) => {
     const shotObj = (s && typeof s === 'object' ? s : {}) as Record<string, unknown>;
+    const shotId = (shotObj.id && typeof shotObj.id === 'string' && shotObj.id.trim())
+      ? shotObj.id.trim()
+      : `shot_${planId}_${i + 1}`;
     return {
+      id: shotId,
       time: ensureString(shotObj.time, `${i * 5}s`),
       duration: typeof shotObj.duration === 'number' ? shotObj.duration : undefined,
       title: ensureString(shotObj.title, `Shot ${i + 1}`),
@@ -63,7 +67,9 @@ export const normalizeResult = (raw: unknown): ProductionKit | null => {
       camera: ensureString(shotObj.camera || shotObj.framing, 'Medium shot'),
       overlay: ensureString(shotObj.overlay || shotObj.onScreenText || shotObj.text, ''),
       edit: ensureString(shotObj.edit || shotObj.pacing, 'Cut on beat'),
-      audio: ensureString(shotObj.audio || shotObj.sound || shotObj.sfx, 'Background audio')
+      audio: ensureString(shotObj.audio || shotObj.sound || shotObj.sfx, 'Background audio'),
+      imageUrl: typeof shotObj.imageUrl === 'string' ? shotObj.imageUrl : undefined,
+      aspectRatio: shotObj.aspectRatio as ScriptShot['aspectRatio']
     };
   });
 

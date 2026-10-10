@@ -10,6 +10,7 @@ export interface ScriptItem {
 }
 
 export interface ScriptShot {
+  id?: string;
   time: string;
   duration?: number;
   title: string;

@@ -102,7 +102,7 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
       {/* Grid of Storyboard Cards */}
       <div className="storyboard-grid">
         {shots.map((s, index) => (
-          <article className="storyboard-card" key={index}>
+          <article className="storyboard-card" key={s.id || `shot-${index}`}>
             {/* Visual Frame Image Box */}
             <div className="frame-container" style={{ aspectRatio: aspectStyle }}>
               {s.imageLoading ? (
