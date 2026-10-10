@@ -2,6 +2,11 @@
 node_modules/
 **/node_modules/
 
+# Next.js build
+.next/
+out/
+*.tsbuildinfo
+
 # Production build
 dist/
 **/dist/
