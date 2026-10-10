@@ -14,7 +14,7 @@ function sample(input) {
   ];
   const opening = input.selectedHook?.trim() || hooks[0];
   const shots = [
-    {time:'0–3s',duration:3,title:'Pattern interrupt',voiceover:opening,visual:'Start on a tight close-up; look directly into the lens.',camera:'Tight close-up, subtle push-in',overlay:'YOU’RE DOING THIS WRONG',edit:'Hard cut on first word; punch-in at 1.5s',audio:'Short impact hit, then music bed'},
+    {time:'0–3s',duration:3,title:'Pattern interrupt',voiceover:opening,visual:'Start on a tight close-up; look directly into the lens.',camera:'Tight close-up, subtle push-in',overlay:"YOU'RE DOING THIS WRONG",edit:'Hard cut on first word; punch-in at 1.5s',audio:'Short impact hit, then music bed'},
     {time:'3–9s',duration:6,title:'Make the problem relatable',voiceover:`Most people in ${audience.toLowerCase()} focus on the obvious part of ${topic.toLowerCase()} and miss what actually moves the needle.`,visual:'Show the common mistake, process, or before-state as B-roll.',camera:'Over-the-shoulder / medium shot',overlay:'THE COMMON MISTAKE',edit:'Three quick cuts; highlight one keyword per beat',audio:'Light whoosh between cuts'},
     {time:'9–18s',duration:9,title:'Deliver the useful insight',voiceover:'Instead, simplify it: pick one clear goal, make the next step obvious, and repeat what works.',visual:'Demonstrate the better approach on screen; show the result, not just the explanation.',camera:'Screen recording + hands-on detail shot',overlay:'ONE GOAL → ONE NEXT STEP',edit:'Cut to demonstration; use a speed ramp only if it adds clarity',audio:'Music builds slightly under the reveal'},
     {time:'18–25s',duration:7,title:'Show proof or an example',voiceover:'Try this once today and compare the result with your usual approach.',visual:'Show a concrete example, a before/after, or a quick checklist.',camera:'Medium shot followed by detail insert',overlay:'TRY THIS TODAY',edit:'Use a clean match cut into the example',audio:'Soft click / confirmation sound'},
@@ -42,12 +42,16 @@ export default async function handler(req, res) {
     const ai = new GoogleGenAI({apiKey:process.env.GEMINI_API_KEY});
     const prompt = `You are ReelForge, an expert short-form video strategist, scriptwriter, and editor. Return ONLY valid JSON with keys title, creative_direction, hooks (exactly 3 objects with text and angle), script (array of time, voiceover, delivery), shots (array of time, duration number, title, voiceover, visual, camera, overlay, edit, audio), captions (short, engaging, hashtags array), production_notes (array), metadata (object). Create practical, specific, shootable content. Align script and shot timestamps and keep total video close to requested duration. Include camera framing, visual action, on-screen text, edit notes, audio cues. Avoid invented statistics. Tailor to this brief: ${JSON.stringify(input)}. ${input.selectedHook ? `Use this exact line as the opening hook and build the whole script/storyboard around its promise: ${JSON.stringify(input.selectedHook)}` : ''}`;
     const response = await ai.models.generateContent({
-      model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+      model: process.env.GEMINI_MODEL || 'gemini-3.8-flash',
       contents: prompt,
       config: { responseMimeType:'application/json', temperature:0.8 }
     });
     if (!response.text) throw new Error('Gemini returned an empty response.');
-    const data = JSON.parse(response.text);
+    let cleaned = response.text.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    }
+    const data = JSON.parse(cleaned);
     data.metadata = {...(data.metadata || {}), mode:'ai', provider:'gemini'};
     return res.status(200).json(data);
   } catch (err) {
