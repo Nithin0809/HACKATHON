@@ -48,10 +48,10 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
   const hasGeneratedImages = shots.some(s => s.imageUrl);
 
   return (
-    <div className="tab-content visual-storyboard-tab">
+    <div className="tab-content visual-storyboard-tab" style={{ width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       {/* Header Controls Bar */}
-      <div className="storyboard-header-bar" style={{ marginBottom: '24px' }}>
-        <div>
+      <div className="storyboard-header-bar" style={{ marginBottom: '24px', width: '100%', maxWidth: '100%', flexWrap: 'wrap' }}>
+        <div style={{ flex: 1, minWidth: '240px' }}>
           <span className="aspect-pill" style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'var(--input-bg)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: '8px', fontSize: '13px', fontWeight: 600 }}>
             <Layers size={14} /> Video Shape: {aspectRatioTag}
           </span>
@@ -63,7 +63,7 @@ export const VisualStoryboard: React.FC<VisualStoryboardProps> = ({
           </p>
         </div>
 
-        <div className="storyboard-header-actions" style={{ display: 'flex', gap: '10px' }}>
+        <div className="storyboard-header-actions" style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', maxWidth: '100%' }}>
           <button
             type="button"
             className="primary-step-btn"
