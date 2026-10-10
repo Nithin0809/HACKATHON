@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -14,9 +15,9 @@ app.use(express.json({ limit: '1mb' }));
 
 // Resolve which AI provider to use: Gemini first, then OpenAI, then demo
 const aiProvider = process.env.GEMINI_API_KEY
-  ? { name: 'gemini', apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-2.5-flash', baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/' }
+  ? { name: 'gemini', apiKey: process.env.GEMINI_API_KEY, model: process.env.GEMINI_MODEL || 'gemini-3.8-flash' }
   : process.env.OPENAI_API_KEY
-    ? { name: 'openai', apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || 'gpt-4o-mini', baseURL: undefined }
+    ? { name: 'openai', apiKey: process.env.OPENAI_API_KEY, model: process.env.OPENAI_MODEL || 'gpt-4o-mini' }
     : null;
 
 const sample = (input) => {
@@ -60,27 +61,50 @@ app.get('/api/health', (_req, res) => res.json({ ok: true, mode: aiProvider ? 'a
 app.post('/api/generate', async (req, res) => {
   const input = req.body || {};
   if (!input.topic?.trim()) return res.status(400).json({ error: 'Please enter a video topic.' });
+
+  const systemPrompt = `You are ReelForge, an expert short-form video strategist, scriptwriter, and editor. Return only valid JSON with keys: title, creative_direction, hooks (array of {text,angle}, exactly 3), script (array of {time,voiceover,delivery}), shots (array of {time,duration,title,voiceover,visual,camera,overlay,edit,audio}), captions ({short,engaging,hashtags}), production_notes (array of strings), metadata. Create practical, shootable, non-generic content. Keep each shot aligned with script timestamps and total duration. Make claims responsibly; don't invent statistics. Tailor to platform, audience, niche, tone, and duration. If selectedHook is supplied, use it as the exact opening line and build the script/storyboard around its promise. Shot breakdown must include camera framing, visual action, on-screen text, edit notes, and audio cues.`;
+
   try {
-    if (aiProvider) {
-      const client = new OpenAI({ apiKey: aiProvider.apiKey, baseURL: aiProvider.baseURL });
+    let content;
+
+    if (aiProvider?.name === 'gemini') {
+      // Use native Google Generative AI SDK
+      const genAI = new GoogleGenerativeAI(aiProvider.apiKey);
+      const model = genAI.getGenerativeModel({
+        model: aiProvider.model,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.8,
+        },
+      });
+      const result = await model.generateContent([
+        { text: systemPrompt },
+        { text: JSON.stringify(input) }
+      ]);
+      content = result.response.text();
+    } else if (aiProvider?.name === 'openai') {
+      // Use OpenAI SDK
+      const client = new OpenAI({ apiKey: aiProvider.apiKey });
       const response = await client.chat.completions.create({
         model: aiProvider.model,
         response_format: { type: 'json_object' },
         temperature: 0.8,
         messages: [
-          { role: 'system', content: `You are ReelForge, an expert short-form video strategist, scriptwriter, and editor. Return only valid JSON with keys: title, creative_direction, hooks (array of {text,angle}, exactly 3), script (array of {time,voiceover,delivery}), shots (array of {time,duration,title,voiceover,visual,camera,overlay,edit,audio}), captions ({short,engaging,hashtags}), production_notes (array of strings), metadata. Create practical, shootable, non-generic content. Keep each shot aligned with script timestamps and total duration. Make claims responsibly; don't invent statistics. Tailor to platform, audience, niche, tone, and duration. If selectedHook is supplied, use it as the exact opening line and build the script/storyboard around its promise. Shot breakdown must include camera framing, visual action, on-screen text, edit notes, and audio cues.` },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: JSON.stringify(input) }
         ]
       });
-      const content = response.choices[0]?.message?.content;
-      if (!content) throw new Error('The AI returned an empty response.');
-      let cleaned = content.trim();
-      if (cleaned.startsWith('```')) {
-        cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-      }
-      return res.json(JSON.parse(cleaned));
+      content = response.choices[0]?.message?.content;
+    } else {
+      return res.json(sample(input));
     }
-    return res.json(sample(input));
+
+    if (!content) throw new Error('The AI returned an empty response.');
+    let cleaned = content.trim();
+    if (cleaned.startsWith('```')) {
+      cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+    }
+    return res.json(JSON.parse(cleaned));
   } catch (err) {
     console.error('Generation error:', err.message);
     return res.status(502).json({ error: 'Generation failed. Check your API key/model or try again.', detail: process.env.NODE_ENV === 'development' ? err.message : undefined });
