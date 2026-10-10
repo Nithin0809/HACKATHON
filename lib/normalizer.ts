@@ -1,12 +1,17 @@
 import { ProductionKit, HookOption, ScriptItem, ScriptShot, CaptionData } from '@/types/reelforge';
 
 export const ensureString = (val: unknown, fallback = ''): string => {
-  if (typeof val === 'string') return val;
+  if (typeof val === 'string') return val.trim();
   if (typeof val === 'number') return String(val);
   if (!val) return fallback;
   if (typeof val === 'object') {
     const obj = val as Record<string, unknown>;
-    return String(obj.text || obj.note || obj.description || obj.value || obj.title || JSON.stringify(val));
+    const str = obj.text || obj.summary || obj.direction || obj.description || obj.note || obj.value || obj.title;
+    if (typeof str === 'string' && str.trim()) return str.trim();
+    return Object.values(obj)
+      .map(v => (typeof v === 'string' ? v.trim() : typeof v === 'number' ? String(v) : JSON.stringify(v)))
+      .filter(Boolean)
+      .join(' — ');
   }
   return String(val);
 };
@@ -26,6 +31,10 @@ export const ensureArray = <T = unknown>(val: unknown): T[] => {
 export const normalizeResult = (raw: unknown): ProductionKit | null => {
   if (!raw || typeof raw !== 'object') return null;
   const record = raw as Record<string, unknown>;
+
+  const planId = (record.id && typeof record.id === 'string' && record.id.trim())
+    ? record.id.trim()
+    : `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
   const title = ensureString(record.title, 'Production Kit');
   const creative_direction = ensureString(record.creative_direction, 'Creator video plan');
@@ -51,7 +60,7 @@ export const normalizeResult = (raw: unknown): ProductionKit | null => {
     };
   });
 
-  const rawShots = ensureArray(record.shots);
+  const rawShots = ensureArray(record.shots || record.storyboard || record.scenes);
   const shots: ScriptShot[] = rawShots.map((s, i) => {
     const shotObj = (s && typeof s === 'object' ? s : {}) as Record<string, unknown>;
     const shotId = (shotObj.id && typeof shotObj.id === 'string' && shotObj.id.trim())
@@ -91,10 +100,6 @@ export const normalizeResult = (raw: unknown): ProductionKit | null => {
 
   const rawNotes = ensureArray(record.production_notes);
   const production_notes = rawNotes.map(n => ensureString(n)).filter(Boolean);
-
-  const planId = (record.id && typeof record.id === 'string' && record.id.trim())
-    ? record.id.trim()
-    : `plan_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
   return {
     id: planId,

@@ -222,7 +222,7 @@ export const BriefForm: React.FC<BriefFormProps> = ({
               fontSize: '15px'
             }}
           >
-            We couldn&apos;t create your video plan right now. Please try again or rephrase your video topic.
+            {error}
           </div>
         )}
       </form>

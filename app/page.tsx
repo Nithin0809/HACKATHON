@@ -202,7 +202,10 @@ export default function Home() {
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || data.detail || 'Generation failed. Please try again.');
+        const errMsg = (typeof data.error === 'object' && data.error?.message)
+          ? data.error.message
+          : (typeof data.error === 'string' ? data.error : data.detail || 'Generation failed. Please try again.');
+        throw new Error(errMsg);
       }
 
       const normalized = normalizeResult(data);

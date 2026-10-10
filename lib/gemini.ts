@@ -45,7 +45,7 @@ export function getSampleKit(input: Partial<ReelBriefForm> & { selectedHook?: st
 export async function generateProductionKit(input: Partial<ReelBriefForm> & { selectedHook?: string }): Promise<ProductionKit> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return getSampleKit(input);
+    throw new Error('GEMINI_API_KEY is not configured in environment variables.');
   }
 
   const ai = new GoogleGenAI({ apiKey });
@@ -54,33 +54,39 @@ export async function generateProductionKit(input: Partial<ReelBriefForm> & { se
   const candidateModels = Array.from(new Set([
     process.env.GEMINI_MODEL,
     'gemini-3.7-flash',
-    'gemini-3.6-flash',
-    'gemini-3.5-flash'
+    'gemini-3.8-flash',
+    'gemini-flash-latest',
+    'gemini-3.5-flash',
+    'gemini-2.5-flash'
   ])).filter(Boolean) as string[];
 
   let textResponse: string | null = null;
   let usedModel: string | undefined = undefined;
+  let lastErrorMsg = '';
 
   for (const modelName of candidateModels) {
     try {
+      console.log(`[generateProductionKit] Trying Gemini model: ${modelName}...`);
       const response = await ai.models.generateContent({
         model: modelName,
         contents: prompt,
-        config: { responseMimeType: 'application/json', temperature: 0.8 }
+        config: { responseMimeType: 'application/json', temperature: 0.7 }
       });
       if (response.text) {
         textResponse = response.text;
         usedModel = modelName;
+        console.log(`[generateProductionKit] SUCCESS with model ${modelName}. Response length: ${response.text.length}`);
         break;
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`Gemini model ${modelName} attempt failed:`, msg);
+      lastErrorMsg = msg;
+      console.warn(`[generateProductionKit] Gemini ${modelName} attempt failed:`, msg.slice(0, 150));
     }
   }
 
   if (!textResponse) {
-    return getSampleKit(input);
+    throw new Error(lastErrorMsg || 'All Gemini AI model generation attempts failed.');
   }
 
   let cleaned = textResponse.trim();
@@ -93,7 +99,7 @@ export async function generateProductionKit(input: Partial<ReelBriefForm> & { se
     data.metadata = { ...(data.metadata || {}), mode: 'ai', provider: 'gemini', model: usedModel };
     return data;
   } catch (parseErr) {
-    console.error('Failed to parse Gemini JSON response:', parseErr);
-    return getSampleKit(input);
+    console.error('Failed to parse Gemini JSON response:', parseErr, 'Raw:', cleaned.slice(0, 200));
+    throw new Error('Received malformed JSON structure from Gemini AI.');
   }
 }
