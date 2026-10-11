@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { ReelBriefForm } from '@/types/reelforge';
-import { Sparkles, LoaderCircle, ArrowRight, Video, Clock, Users, Palette, Check } from 'lucide-react';
+import { Sparkles, LoaderCircle, ArrowRight, Video, Clock, Users, Palette, Check, RefreshCw } from 'lucide-react';
 
 interface BriefFormProps {
   form: ReelBriefForm;
@@ -219,10 +219,36 @@ export const BriefForm: React.FC<BriefFormProps> = ({
               background: 'rgba(239, 68, 68, 0.1)',
               border: '1px solid rgba(239, 68, 68, 0.3)',
               color: '#f87171',
-              fontSize: '15px'
+              fontSize: '15px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '12px',
+              flexWrap: 'wrap'
             }}
           >
-            {error}
+            <span style={{ flex: 1, minWidth: '200px' }}>{error}</span>
+            <button
+              type="button"
+              className="retry-btn"
+              onClick={() => generate()}
+              disabled={loading}
+              style={{
+                background: 'rgba(239, 68, 68, 0.2)',
+                border: '1px solid rgba(239, 68, 68, 0.4)',
+                color: '#ffffff',
+                padding: '6px 14px',
+                borderRadius: '8px',
+                fontSize: '13.5px',
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}
+            >
+              <RefreshCw size={14} className={loading ? 'spin' : ''} /> Retry
+            </button>
           </div>
         )}
       </form>

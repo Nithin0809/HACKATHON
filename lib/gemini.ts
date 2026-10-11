@@ -42,6 +42,32 @@ export function getSampleKit(input: Partial<ReelBriefForm> & { selectedHook?: st
   };
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+const isRetryableError = (msg: string): boolean => {
+  const lower = (msg || '').toLowerCase();
+  return (
+    lower.includes('503') ||
+    lower.includes('unavailable') ||
+    lower.includes('high demand') ||
+    lower.includes('resource_exhausted') ||
+    lower.includes('rate limit') ||
+    lower.includes('quota') ||
+    lower.includes('429') ||
+    lower.includes('overloaded') ||
+    lower.includes('busy') ||
+    lower.includes('fetch failed') ||
+    lower.includes('econnreset') ||
+    lower.includes('etimedout')
+  );
+};
+
+const getBackoffDelay = (attempt: number): number => {
+  const baseMs = 500 * Math.pow(2, attempt); // 500ms, 1000ms, 2000ms
+  const jitterMs = Math.floor(Math.random() * 300); // 0-300ms random jitter
+  return Math.min(baseMs + jitterMs, 5000);
+};
+
 export async function generateProductionKit(input: Partial<ReelBriefForm> & { selectedHook?: string }): Promise<ProductionKit> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -65,23 +91,44 @@ export async function generateProductionKit(input: Partial<ReelBriefForm> & { se
   let lastErrorMsg = '';
 
   for (const modelName of candidateModels) {
-    try {
-      console.log(`[generateProductionKit] Trying Gemini model: ${modelName}...`);
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: prompt,
-        config: { responseMimeType: 'application/json', temperature: 0.7 }
-      });
-      if (response.text) {
-        textResponse = response.text;
-        usedModel = modelName;
-        console.log(`[generateProductionKit] SUCCESS with model ${modelName}. Response length: ${response.text.length}`);
-        break;
+    console.log(`[generateProductionKit] Candidate model: ${modelName}`);
+    const maxAttempts = 3;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      try {
+        if (attempt > 0) {
+          const delay = getBackoffDelay(attempt - 1);
+          console.log(`[generateProductionKit] Retry ${attempt + 1}/${maxAttempts} for model ${modelName} after ${delay}ms backoff...`);
+          await sleep(delay);
+        }
+
+        const response = await ai.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: { responseMimeType: 'application/json', temperature: 0.7 }
+        });
+
+        if (response.text) {
+          textResponse = response.text;
+          usedModel = modelName;
+          console.log(`[generateProductionKit] SUCCESS with model ${modelName} on attempt ${attempt + 1}. Response length: ${response.text.length}`);
+          break;
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        lastErrorMsg = msg;
+        const retryable = isRetryableError(msg);
+        console.warn(`[generateProductionKit] Model ${modelName} attempt ${attempt + 1} failed (retryable: ${retryable}):`, msg.slice(0, 150));
+
+        if (!retryable) {
+          // Do not retry authentication error (401, 403) or invalid requests (400, 404)
+          break;
+        }
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      lastErrorMsg = msg;
-      console.warn(`[generateProductionKit] Gemini ${modelName} attempt failed:`, msg.slice(0, 150));
+    }
+
+    if (textResponse) {
+      break;
     }
   }
 

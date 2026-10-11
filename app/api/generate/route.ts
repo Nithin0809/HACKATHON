@@ -34,23 +34,30 @@ export async function POST(request: Request) {
     console.error('[POST /api/generate] Server Error:', msg);
 
     const isQuota = msg.includes('429') || msg.includes('RESOURCE_EXHAUSTED') || msg.includes('quota');
+    const is503 = msg.includes('503') || msg.includes('UNAVAILABLE') || msg.includes('high demand') || msg.includes('busy') || msg.includes('overloaded');
     const isApiKeyMissing = msg.includes('GEMINI_API_KEY');
 
     let userFacingMsg = msg;
+    let errorCode = 'GEMINI_API_ERROR';
+    let statusCode = 500;
+
     if (isApiKeyMissing) {
       userFacingMsg = 'GEMINI_API_KEY is not configured in environment variables.';
-    } else if (isQuota) {
-      userFacingMsg = 'Gemini API free tier rate limit/quota reached (429). Please try again in a few minutes.';
+      errorCode = 'MISSING_API_KEY';
+    } else if (is503 || isQuota) {
+      userFacingMsg = 'Our AI service is busy right now. Please try again in a moment.';
+      errorCode = is503 ? 'SERVICE_UNAVAILABLE' : 'GEMINI_QUOTA_EXCEEDED';
+      statusCode = is503 ? 503 : 429;
     }
 
     return NextResponse.json(
       {
         error: {
-          code: isQuota ? 'GEMINI_QUOTA_EXCEEDED' : isApiKeyMissing ? 'MISSING_API_KEY' : 'GEMINI_API_ERROR',
+          code: errorCode,
           message: userFacingMsg
         }
       },
-      { status: 500 }
+      { status: statusCode }
     );
   }
 }
