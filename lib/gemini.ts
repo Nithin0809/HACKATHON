@@ -44,28 +44,63 @@ export function getSampleKit(input: Partial<ReelBriefForm> & { selectedHook?: st
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-const isRetryableError = (msg: string): boolean => {
+const parseRetryDelayMs = (err: unknown): number | null => {
+  try {
+    const msg = err instanceof Error ? err.message : String(err);
+    const match = msg.match(/retryDelay["']?\s*:\s*["']?([0-9.]+)(s|ms)?/i);
+    if (match) {
+      const val = parseFloat(match[1]);
+      const unit = match[2]?.toLowerCase() || 's';
+      return unit === 'ms' ? val : Math.round(val * 1000);
+    }
+  } catch {
+    // ignore
+  }
+  return null;
+};
+
+const isQuotaExhaustedError = (msg: string): boolean => {
+  const lower = (msg || '').toLowerCase();
+  return (
+    lower.includes('quota exceeded') ||
+    lower.includes('resource_exhausted') ||
+    lower.includes('limit: 20') ||
+    lower.includes('free_tier_requests')
+  );
+};
+
+const isModelNotFoundError = (msg: string): boolean => {
+  const lower = (msg || '').toLowerCase();
+  return (
+    lower.includes('404') ||
+    lower.includes('not found') ||
+    lower.includes('no longer available')
+  );
+};
+
+const isAuthError = (msg: string): boolean => {
+  const lower = (msg || '').toLowerCase();
+  return (
+    lower.includes('api_key_invalid') ||
+    lower.includes('api key not valid') ||
+    lower.includes('401') ||
+    lower.includes('403') ||
+    lower.includes('permission_denied')
+  );
+};
+
+const isTransientServerError = (msg: string): boolean => {
   const lower = (msg || '').toLowerCase();
   return (
     lower.includes('503') ||
     lower.includes('unavailable') ||
     lower.includes('high demand') ||
-    lower.includes('resource_exhausted') ||
-    lower.includes('rate limit') ||
-    lower.includes('quota') ||
-    lower.includes('429') ||
     lower.includes('overloaded') ||
     lower.includes('busy') ||
     lower.includes('fetch failed') ||
     lower.includes('econnreset') ||
     lower.includes('etimedout')
   );
-};
-
-const getBackoffDelay = (attempt: number): number => {
-  const baseMs = 500 * Math.pow(2, attempt); // 500ms, 1000ms, 2000ms
-  const jitterMs = Math.floor(Math.random() * 300); // 0-300ms random jitter
-  return Math.min(baseMs + jitterMs, 5000);
 };
 
 export async function generateProductionKit(input: Partial<ReelBriefForm> & { selectedHook?: string }): Promise<ProductionKit> {
@@ -77,28 +112,45 @@ export async function generateProductionKit(input: Partial<ReelBriefForm> & { se
   const ai = new GoogleGenAI({ apiKey });
   const prompt = `You are ReelForge, an expert short-form video strategist, scriptwriter, and editor. Return ONLY valid JSON with keys title, creative_direction, hooks (exactly 3 objects with text and angle), script (array of time, voiceover, delivery), shots (array of time, duration number, title, voiceover, visual, camera, overlay, edit, audio), captions (short, engaging, hashtags array), production_notes (array), metadata (object). Create practical, specific, shootable content. Align script and shot timestamps and keep total video close to requested duration. Include camera framing, visual action, on-screen text, edit notes, audio cues. Avoid invented statistics. Tailor to this brief: ${JSON.stringify(input)}. ${input.selectedHook ? `Use this exact line as the opening hook and build the whole script/storyboard around its promise: ${JSON.stringify(input.selectedHook)}` : ''}`;
 
+  // Priority order:
+  // 1. Explicitly configured GEMINI_MODEL (if set)
+  // 2. High-availability, low-latency verified models (gemini-3.5-flash-lite, gemini-flash-lite-latest)
+  // 3. Robust fallbacks (gemini-3.1-flash-lite, gemini-3.1-flash-lite-preview)
+  // 4. Standard flash models (gemini-3.5-flash, gemini-3.7-flash, gemini-3.8-flash)
   const candidateModels = Array.from(new Set([
     process.env.GEMINI_MODEL,
-    'gemini-3.7-flash',
-    'gemini-3.8-flash',
-    'gemini-flash-latest',
+    'gemini-3.5-flash-lite',
+    'gemini-flash-lite-latest',
+    'gemini-3.1-flash-lite',
+    'gemini-3.1-flash-lite-preview',
     'gemini-3.5-flash',
-    'gemini-2.5-flash'
+    'gemini-3.7-flash',
+    'gemini-3.8-flash'
   ])).filter(Boolean) as string[];
 
   let textResponse: string | null = null;
   let usedModel: string | undefined = undefined;
   let lastErrorMsg = '';
+  const startTime = Date.now();
+  const MAX_TOTAL_EXECUTION_MS = 24000; // Keep total execution safely under Vercel serverless function timeout
 
   for (const modelName of candidateModels) {
-    console.log(`[generateProductionKit] Candidate model: ${modelName}`);
-    const maxAttempts = 3;
+    const elapsed = Date.now() - startTime;
+    if (elapsed > MAX_TOTAL_EXECUTION_MS) {
+      console.warn(`[generateProductionKit] Approaching serverless function timeout (${elapsed}ms). Aborting candidate loop.`);
+      break;
+    }
 
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    console.log(`[generateProductionKit] Attempting candidate model: ${modelName} (elapsed: ${elapsed}ms)`);
+    // Allow at most 1 fast retry for transient 503/network spikes
+    const maxAttemptsForModel = 2;
+
+    for (let attempt = 0; attempt < maxAttemptsForModel; attempt++) {
       try {
         if (attempt > 0) {
-          const delay = getBackoffDelay(attempt - 1);
-          console.log(`[generateProductionKit] Retry ${attempt + 1}/${maxAttempts} for model ${modelName} after ${delay}ms backoff...`);
+          const jitter = Math.floor(Math.random() * 200);
+          const delay = 350 + jitter;
+          console.log(`[generateProductionKit] Fast retry ${attempt + 1}/${maxAttemptsForModel} for model ${modelName} after ${delay}ms...`);
           await sleep(delay);
         }
 
@@ -117,13 +169,42 @@ export async function generateProductionKit(input: Partial<ReelBriefForm> & { se
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         lastErrorMsg = msg;
-        const retryable = isRetryableError(msg);
-        console.warn(`[generateProductionKit] Model ${modelName} attempt ${attempt + 1} failed (retryable: ${retryable}):`, msg.slice(0, 150));
 
-        if (!retryable) {
-          // Do not retry authentication error (401, 403) or invalid requests (400, 404)
+        // 1. Authentication errors cannot be resolved by retrying or switching models
+        if (isAuthError(msg)) {
+          console.error(`[generateProductionKit] Fatal authentication error on model ${modelName}:`, msg.slice(0, 150));
+          throw new Error('Gemini API authentication failed. Please verify your GEMINI_API_KEY.');
+        }
+
+        // 2. Model 404 or deprecated -> Skip immediately to next model
+        if (isModelNotFoundError(msg)) {
+          console.warn(`[generateProductionKit] Model ${modelName} not available or deprecated. Skipping immediately.`);
           break;
         }
+
+        // 3. Quota exhausted on this model -> Skip immediately to next candidate model
+        if (isQuotaExhaustedError(msg)) {
+          console.warn(`[generateProductionKit] Quota exhausted for model ${modelName}. Switching immediately to fallback model.`);
+          break;
+        }
+
+        // 4. Temporary 503 or transient network error
+        if (isTransientServerError(msg)) {
+          const retryDelay = parseRetryDelayMs(err);
+          // If the upstream advises waiting longer than 2.5s, don't stall the serverless function; fallback immediately
+          if (retryDelay && retryDelay > 2500) {
+            console.warn(`[generateProductionKit] Upstream requested long retry delay (${retryDelay}ms) on ${modelName}. Switching to fallback model immediately.`);
+            break;
+          }
+
+          console.warn(`[generateProductionKit] Model ${modelName} attempt ${attempt + 1} experienced transient spike:`, msg.slice(0, 150));
+          // If first attempt, loop will perform fast retry; if second attempt failed, break to next model
+          continue;
+        }
+
+        // Any other error -> log and try next model
+        console.warn(`[generateProductionKit] Model ${modelName} attempt ${attempt + 1} failed:`, msg.slice(0, 150));
+        break;
       }
     }
 

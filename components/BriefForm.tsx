@@ -247,7 +247,7 @@ export const BriefForm: React.FC<BriefFormProps> = ({
                 gap: '6px'
               }}
             >
-              <RefreshCw size={14} className={loading ? 'spin' : ''} /> Retry
+              <RefreshCw size={14} className={loading ? 'spin' : ''} /> {loading ? 'Retrying…' : 'Retry'}
             </button>
           </div>
         )}

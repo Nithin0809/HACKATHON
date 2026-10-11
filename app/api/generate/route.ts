@@ -3,6 +3,7 @@ import { generateProductionKit, getSampleKit } from '@/lib/gemini';
 import { normalizeResult } from '@/lib/normalizer';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
 
 export async function POST(request: Request) {
   try {
